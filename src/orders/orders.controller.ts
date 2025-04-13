@@ -43,4 +43,9 @@ export class OrdersController {
     return this.ordersService.paidOrder( paidOrderDto );
   }
 
+  @EventPattern('payment.cancelled')
+  cancelledOrder(@Payload() data: {orderId:string, reason?:string} ) {
+    return this.ordersService.cancelOrder(data.orderId, data.reason);
+  }
+
 }

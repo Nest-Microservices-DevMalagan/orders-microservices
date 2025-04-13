@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   HttpStatus,
   Inject,
   Injectable,
@@ -40,7 +41,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
         const price = products.find(
           (product) => product.id === orderItem.productId,
         ).price;
-        return price * orderItem.quantity;
+        return acc + price * orderItem.quantity;
       }, 0);
 
       const totalItems = createOrderDto.items.reduce((acc, orderItem) => {
@@ -168,26 +169,22 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
   }
 
   async createPaymentSession(order: OrderWithProducts) {
-
     const paymentSession = await firstValueFrom(
       this.client.send('create.payment.session', {
         orderId: order.id,
         currency: 'usd',
-        items: order.OrderItem.map( item => ({
+        items: order.OrderItem.map((item) => ({
           name: item.name,
           price: item.price,
           quantity: item.quantity,
-        }) ),
+        })),
       }),
     );
 
     return paymentSession;
   }
 
-
-
-  async paidOrder( paidOrderDto: PaidOrderDto ) {
-
+  async paidOrder(paidOrderDto: PaidOrderDto) {
     this.logger.log('Order Paid');
     this.logger.log(paidOrderDto);
 
@@ -202,14 +199,40 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
         // La relación
         OrderReceipt: {
           create: {
-            receiptUrl: paidOrderDto.receiptUrl
-          }
-        }
-      }
+            receiptUrl: paidOrderDto.receiptUrl,
+          },
+        },
+      },
     });
 
     return order;
-
   }
 
+  async cancelOrder(orderId: string, reason: string) {
+    const order = await this.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (order.status === 'CANCELLED') {
+      this.logger.warn(`Order ${orderId} is alredy cancelled`);
+      return order;
+    }
+
+    // Reglas de negocio opcional (una vez pagado o enviado no se puede cancelar):
+    if (order.status === 'PAID' || order.status === 'DELIVERED') {
+      throw new BadRequestException(`Cannot cancel a ${order.status} order`);
+    }
+
+    const updatedOrder = await this.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'CANCELLED',
+        paid:false,
+        paidAt: null
+      },
+    });
+
+    this.logger.log(`Order ${orderId} cancelled ${reason ? `: ${reason}` : ''}`);
+    return updatedOrder;
+  }
 }
