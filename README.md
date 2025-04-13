@@ -16,6 +16,6 @@ docker compose up -d
 ```
 docker run -d --name nats-server -p 4222:4222 -p 8222:8222 nats
 ```
-5. Levantar el proyecto con `pnpm run start:dev`
+5. Levantar el proyecto con `bun run start:dev`
 
 ### Test commits
