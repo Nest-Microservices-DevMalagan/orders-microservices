@@ -13,7 +13,9 @@ steps:
       'push',
       'us-east4-docker.pkg.dev/ecommerce-microserivces/nestjs-ecommerce-registry/auth-ms',
     ]
-
+options:
+  logging: CLOUD_LOGGING_ONLY
+  
 availableSecrets:
   secretManager:
   - versionName: projects/927687663749/secrets/orders_database_url/versions/1
